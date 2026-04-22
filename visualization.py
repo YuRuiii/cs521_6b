@@ -64,3 +64,35 @@ def plot_selfish_mining_revenue(
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
     _save_and_show(save_path)
+
+
+def plot_convergence(
+    alpha: float = 0.3,
+    gamma: float = 0.5,
+    max_rounds: int = 500_000,
+    checkpoints: int = 50,
+    seed: int = 42,
+    save_path: Optional[str] = None,
+):
+    fig, ax = plt.subplots(figsize=(9, 5))
+
+    round_counts = np.linspace(1000, max_rounds, checkpoints, dtype=int)
+    sim_vals = [
+        SelfishMiningSimulator(alpha, gamma, seed=seed).run(int(n)).selfish_revenue
+        for n in round_counts
+    ]
+    theo = theoretical_selfish_revenue(alpha, gamma)
+
+    ax.plot(round_counts, sim_vals, "b-o", markersize=4, label="Simulated revenue")
+    ax.axhline(y=theo, color="r", linestyle="--", linewidth=2,
+               label=f"Theoretical = {theo:.4f}")
+    ax.axhline(y=alpha, color="gray", linestyle=":", linewidth=1.5,
+               label=f"Honest revenue = {alpha}")
+
+    ax.set_xlabel("Number of Simulation Rounds", fontsize=13)
+    ax.set_ylabel("Selfish Miner Relative Revenue", fontsize=13)
+    ax.set_title(f"Convergence Test (α={alpha}, γ={gamma})", fontsize=14)
+    ax.legend(fontsize=11)
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    _save_and_show(save_path)
