@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.lines import Line2D
 
 from simulator import (
     SelfishMiningSimulator,
@@ -65,6 +66,52 @@ def plot_selfish_mining_revenue(
     plt.tight_layout()
     _save_and_show(save_path)
 
+
+
+def plot_pool_comparison(
+    pool_results: Dict[str, Dict],
+    save_path: Optional[str] = None,
+):
+    """
+    Bar chart comparing miner revenues under different pool strategies (PPS vs PPLNS).
+
+    Parameters
+    ----------
+    pool_results : dict
+        Keys are strategy names ('PPS', 'PPLNS'), values are dicts
+        mapping miner names to their result dicts.
+    """
+    fig, axes = plt.subplots(1, len(pool_results), figsize=(6 * len(pool_results), 5),
+                              sharey=True)
+    if len(pool_results) == 1:
+        axes = [axes]
+
+    for ax, (strategy_name, miners) in zip(axes, pool_results.items()):
+        names = list(miners.keys())
+        revenues = [miners[n]["revenue"] for n in names]
+        hash_rates = [miners[n]["hash_rate"] for n in names]
+
+        x = np.arange(len(names))
+        width = 0.35
+
+        bars1 = ax.bar(x - width/2, hash_rates, width, label="Hash Rate Share",
+                       color="#3498db", alpha=0.85)
+        bars2 = ax.bar(x + width/2, [r / max(sum(revenues), 1e-9) for r in revenues],
+                       width, label="Revenue Share", color="#e74c3c", alpha=0.85)
+
+        ax.set_xlabel("Miner", fontsize=11)
+        ax.set_ylabel("Share", fontsize=11)
+        ax.set_title(f"Pool Strategy: {strategy_name}", fontsize=13)
+        ax.set_xticks(x)
+        ax.set_xticklabels(names, rotation=45, ha="right", fontsize=8)
+        ax.legend(fontsize=9)
+        ax.grid(True, alpha=0.3, axis="y")
+
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+        print(f"Saved figure to {save_path}")
+    plt.show()
 
 def plot_convergence(
     alpha: float = 0.3,
