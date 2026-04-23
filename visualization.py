@@ -66,7 +66,100 @@ def plot_selfish_mining_revenue(
     plt.tight_layout()
     _save_and_show(save_path)
 
+def plot_threshold_vs_gamma(
+    save_path: Optional[str] = None,
+):
+    """
+    Plot the selfish mining profitability threshold as a function of gamma.
+    Shows that with better network connectivity (higher gamma),
+    the attacker needs less hash power.
+    """
+    fig, ax = plt.subplots(figsize=(8, 5))
 
+    gamma_values = np.linspace(0, 1, 200)
+    thresholds = [selfish_mining_threshold(g) for g in gamma_values]
+
+    ax.plot(gamma_values, thresholds, "b-", linewidth=2.5)
+    ax.fill_between(
+        gamma_values, thresholds, 0.5,
+        alpha=0.15, color="red", label="Selfish mining profitable"
+    )
+    ax.fill_between(
+        gamma_values, 0, thresholds,
+        alpha=0.15, color="green", label="Honest mining optimal"
+    )
+
+    # Mark key points
+    ax.plot(0, 1/3, "ko", markersize=8)
+    ax.annotate("γ=0 → α*=1/3", xy=(0.02, 1/3 + 0.01), fontsize=10)
+
+    ax.plot(1, 0, "ko", markersize=8)
+    ax.annotate("γ=1 → α*=0", xy=(0.85, 0.02), fontsize=10)
+
+    ax.set_xlabel("γ (Network Propagation Advantage)", fontsize=13)
+    ax.set_ylabel("Threshold α*", fontsize=13)
+    ax.set_title("Selfish Mining Profitability Threshold", fontsize=14)
+    ax.legend(fontsize=11)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 0.5)
+    ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+        print(f"Saved figure to {save_path}")
+    plt.show()
+
+
+def plot_revenue_heatmap(
+    num_rounds: int = 50_000,
+    seed: int = 42,
+    save_path: Optional[str] = None,
+):
+    """
+    Heatmap showing the selfish miner's relative revenue advantage
+    across (alpha, gamma) parameter space.
+    """
+    alphas = np.linspace(0.01, 0.49, 30)
+    gammas = np.linspace(0, 1, 30)
+    advantage = np.zeros((len(gammas), len(alphas)))
+
+    for i, gamma in enumerate(gammas):
+        for j, alpha in enumerate(alphas):
+            sim = SelfishMiningSimulator(alpha=alpha, gamma=gamma, seed=seed)
+            result = sim.run(num_rounds=num_rounds)
+            # Advantage = selfish revenue - honest revenue (alpha)
+            advantage[i, j] = result.selfish_revenue - alpha
+
+    fig, ax = plt.subplots(figsize=(10, 7))
+    im = ax.imshow(
+        advantage,
+        extent=[alphas[0], alphas[-1], gammas[0], gammas[-1]],
+        origin="lower",
+        aspect="auto",
+        cmap="RdYlGn_r",
+        vmin=-0.05,
+        vmax=0.15,
+    )
+
+    # Overlay the theoretical threshold curve
+    gamma_line = np.linspace(0, 1, 200)
+    threshold_line = [(1 - g) / (3 - 2 * g) for g in gamma_line]
+    ax.plot(threshold_line, gamma_line, "k--", linewidth=2, label="Threshold α*")
+
+    cbar = plt.colorbar(im, ax=ax)
+    cbar.set_label("Revenue Advantage (selfish - honest)", fontsize=11)
+
+    ax.set_xlabel("α (Selfish Miner Hash Rate)", fontsize=13)
+    ax.set_ylabel("γ (Network Propagation Advantage)", fontsize=13)
+    ax.set_title("Selfish Mining Revenue Advantage Heatmap", fontsize=14)
+    ax.legend(fontsize=11, loc="upper left")
+
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+        print(f"Saved figure to {save_path}")
+    plt.show()
 
 def plot_pool_comparison(
     pool_results: Dict[str, Dict],
