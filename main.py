@@ -34,6 +34,38 @@ from visualization import (
     plot_convergence,
 )
 
+SEED = 42
+
+
+def _section(title):
+    print("=" * 60)
+    print(title)
+    print("=" * 60)
+
+
+def experiment_1_revenue_curves():
+    _section("Experiment 1: Selfish Mining Revenue vs. Hash Rate")
+
+    alphas = np.linspace(0.01, 0.49, 25)
+    gammas = [0.0, 0.25, 0.5, 1.0]
+
+    print(f"  alpha: {alphas[0]:.2f}..{alphas[-1]:.2f} ({len(alphas)} points)")
+    print(f"  gamma: {gammas}")
+    print(f"  rounds: 100,000")
+
+    print("\n  profitability thresholds:")
+    for g in gammas:
+        t = selfish_mining_threshold(g)
+        print(f"    gamma={g:.2f} -> alpha* = {t:.4f} ({t*100:.1f}%)")
+
+    plot_selfish_mining_revenue(
+        alpha_values=alphas,
+        gamma_values=gammas,
+        num_rounds=100_000,
+        seed=SEED,
+        save_path="fig1_revenue_curves.png",
+    )
+
 
 def experiment_2_threshold_analysis():
     """
@@ -104,6 +136,50 @@ def experiment_4_pool_strategies():
 
     plot_pool_comparison(pool_results, save_path="fig4_pool_comparison.png")
 
+
+def experiment_5_convergence():
+    _section("Experiment 5: Simulation Convergence")
+
+    alpha, gamma = 0.3, 0.5
+    theo = theoretical_selfish_revenue(alpha, gamma)
+    print(f"  alpha={alpha}, gamma={gamma}")
+    print(f"  theoretical = {theo:.4f}")
+    print(f"  honest      = {alpha:.4f}")
+    print(f"  advantage   = {theo - alpha:.4f}")
+
+    plot_convergence(
+        alpha=alpha, gamma=gamma,
+        max_rounds=500_000, checkpoints=50,
+        seed=SEED, save_path="fig5_convergence.png",
+    )
+
+
+def run_quick_demo():
+    print("\n" + "=" * 60)
+    print("Quick Demo: Selfish Mining Simulation")
+    print("=" * 60)
+
+    cases = [
+        (0.10, 0.0), (0.10, 0.5),
+        (0.25, 0.0), (0.25, 0.5),
+        (0.33, 0.0), (0.33, 0.5),
+        (0.40, 0.0), (0.40, 0.5),
+        (0.45, 0.0), (0.45, 0.5),
+    ]
+
+    header = f"\n{'alpha':>6} {'gamma':>6} {'Simulated':>10} {'Theoretical':>12} {'Honest':>8} {'Profit?':>9}"
+    print(header)
+    print("-" * 60)
+
+    for alpha, gamma in cases:
+        sim = SelfishMiningSimulator(alpha, gamma, seed=SEED)
+        r = sim.run(num_rounds=200_000)
+        theo = theoretical_selfish_revenue(alpha, gamma)
+        profit = "YES" if alpha > selfish_mining_threshold(gamma) else "no"
+
+        print(f"{alpha:>6.2f} {gamma:>6.1f} "
+              f"{r.selfish_revenue:>10.4f} {theo:>12.4f} "
+              f"{alpha:>8.4f} {profit:>9}")
 
 
 def main():
