@@ -34,6 +34,40 @@ from visualization import (
     plot_convergence,
 )
 
+
+def experiment_2_threshold_analysis():
+    """
+    Experiment 2: How the profitability threshold varies with gamma.
+    """
+    print("=" * 60)
+    print("Experiment 2: Profitability Threshold vs. Gamma")
+    print("=" * 60)
+
+    print("  gamma=0.0 (no network advantage): alpha* = 1/3 = 33.3%")
+    print("  gamma=0.5 (moderate advantage):   alpha* = 1/4 = 25.0%")
+    print("  gamma=1.0 (full advantage):        alpha* -> 0%")
+
+    plot_threshold_vs_gamma(save_path="fig2_threshold_vs_gamma.png")
+
+
+def experiment_3_heatmap():
+    """
+    Experiment 3: Revenue advantage heatmap across (alpha, gamma) space.
+    """
+    print("=" * 60)
+    print("Experiment 3: Revenue Advantage Heatmap")
+    print("=" * 60)
+
+    print("  Scanning alpha x gamma parameter space...")
+    print("  Green = honest mining better, Red = selfish mining better")
+
+    plot_revenue_heatmap(
+        num_rounds=50_000,
+        seed=42,
+        save_path="fig3_heatmap.png",
+    )
+
+
 def experiment_4_pool_strategies():
     """
     Experiment 4: Compare PPS vs PPLNS pool reward distribution.
