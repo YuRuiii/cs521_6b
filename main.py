@@ -26,12 +26,14 @@ from strategies import (
     simulate_pool_mining,
     create_hash_rate_distribution,
 )
+from topology import build_scale_free, sweep_peer_counts
 from visualization import (
     plot_selfish_mining_revenue,
     plot_threshold_vs_gamma,
     plot_revenue_heatmap,
     plot_pool_comparison,
     plot_convergence,
+    plot_topology_gamma,
 )
 
 SEED = 42
@@ -154,6 +156,40 @@ def experiment_5_convergence():
     )
 
 
+def experiment_6_topology_gamma():
+    _section("Experiment 6: Topology-derived γ")
+
+    n_honest = 50
+    m = 3
+    peer_counts = [1, 2, 4, 8, 16, 32]
+    alpha = 0.3
+
+    print(f"  scale-free graph: n_honest={n_honest}, m={m}")
+    print(f"  peer counts: {peer_counts}")
+    print(f"  alpha for revenue plot: {alpha}")
+
+    net = build_scale_free(n=n_honest, m=m, seed=SEED)
+    sweep = sweep_peer_counts(
+        net=net,
+        peer_counts=peer_counts,
+        strategies=("random", "high_degree"),
+        trials=200,
+        seed=SEED,
+    )
+
+    print("\n  γ_empirical (mean ± std):")
+    for strat, rows in sweep.items():
+        print(f"    {strat}:")
+        for r in rows:
+            print(f"      k={int(r['k']):>3}  γ = {r['gamma_mean']:.3f} ± {r['gamma_std']:.3f}")
+
+    plot_topology_gamma(
+        sweep=sweep,
+        alpha=alpha,
+        save_path="fig6_topology_gamma.png",
+    )
+
+
 def run_quick_demo():
     print("\n" + "=" * 60)
     print("Quick Demo: Selfish Mining Simulation")
@@ -189,8 +225,8 @@ def main():
     parser.add_argument(
         "--experiment", "-e",
         type=int,
-        choices=[1, 2, 3, 4, 5],
-        help="Run a specific experiment (1-5). Default: run all.",
+        choices=[1, 2, 3, 4, 5, 6],
+        help="Run a specific experiment (1-6). Default: run all.",
     )
     parser.add_argument(
         "--demo",
@@ -209,6 +245,7 @@ def main():
         3: experiment_3_heatmap,
         4: experiment_4_pool_strategies,
         5: experiment_5_convergence,
+        6: experiment_6_topology_gamma,
     }
 
     if args.experiment:

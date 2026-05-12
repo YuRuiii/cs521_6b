@@ -206,24 +206,103 @@ def plot_pool_comparison(
         print(f"Saved figure to {save_path}")
     plt.show()
 
+def plot_topology_gamma(
+    sweep: Dict[str, List[Dict[str, float]]],
+    alpha: float = 0.3,
+    save_path: Optional[str] = None,
+):
+    """
+    Two-panel plot:
+      (left)  topology-derived gamma as a function of selfish miner's peer count,
+              for each peer-selection strategy.
+      (right) selfish miner's relative-revenue advantage at fixed alpha, obtained
+              by plugging the empirical gamma back into the analytical formula.
+    """
+    fig, (ax_g, ax_r) = plt.subplots(1, 2, figsize=(13, 5))
+
+    strategy_labels = {
+        "random": "Random peering",
+        "high_degree": "High-degree peering",
+        "high_hashrate": "High-hashrate peering",
+    }
+
+    for idx, (strategy, rows) in enumerate(sweep.items()):
+        ks = [r["k"] for r in rows]
+        gms = [r["gamma_mean"] for r in rows]
+        gss = [r["gamma_std"] for r in rows]
+        c = COLORS[idx % len(COLORS)]
+        m = MARKERS[idx % len(MARKERS)]
+        label = strategy_labels.get(strategy, strategy)
+
+        ax_g.errorbar(ks, gms, yerr=gss, marker=m, color=c, linewidth=2,
+                      markersize=7, capsize=3, label=label)
+
+        advantages = [theoretical_selfish_revenue(alpha, g) - alpha for g in gms]
+        ax_r.plot(ks, advantages, marker=m, color=c, linewidth=2,
+                  markersize=7, label=label)
+
+    ax_g.set_xscale("log", base=2)
+    ax_g.set_xlabel("Selfish miner's peer count k", fontsize=12)
+    ax_g.set_ylabel("Empirical γ", fontsize=12)
+    ax_g.set_title("γ derived from gossip topology", fontsize=13)
+    ax_g.set_ylim(0, 1)
+    ax_g.grid(True, alpha=0.3)
+    ax_g.legend(fontsize=10, loc="upper left")
+
+    ax_r.axhline(y=0, color="gray", linestyle=":", linewidth=1.5,
+                 label=f"Honest baseline (α={alpha})")
+    ax_r.set_xscale("log", base=2)
+    ax_r.set_xlabel("Selfish miner's peer count k", fontsize=12)
+    ax_r.set_ylabel(f"Revenue advantage at α={alpha}", fontsize=12)
+    ax_r.set_title("Revenue implication of topology-derived γ", fontsize=13)
+    ax_r.grid(True, alpha=0.3)
+    ax_r.legend(fontsize=10, loc="upper left")
+
+    plt.tight_layout()
+    _save_and_show(save_path)
+
+
 def plot_convergence(
     alpha: float = 0.3,
     gamma: float = 0.5,
     max_rounds: int = 500_000,
     checkpoints: int = 50,
     seed: int = 42,
+    num_seeds: int = 10,
     save_path: Optional[str] = None,
 ):
+    """
+    Multi-seed convergence test.
+
+    For each checkpoint n we run `num_seeds` independent simulations of length n
+    and plot the mean ± 1σ band. This is the methodologically correct way to
+    show that the simulator converges to the closed-form prediction: a single
+    seed only traces one realisation of a random walk, which can sit on either
+    side of the theoretical value for arbitrarily long stretches.
+    """
     fig, ax = plt.subplots(figsize=(9, 5))
 
     round_counts = np.linspace(1000, max_rounds, checkpoints, dtype=int)
-    sim_vals = [
-        SelfishMiningSimulator(alpha, gamma, seed=seed).run(int(n)).selfish_revenue
-        for n in round_counts
-    ]
+    seeds = [seed + i for i in range(num_seeds)]
+    all_curves = np.array([
+        [SelfishMiningSimulator(alpha, gamma, seed=s).run(int(n)).selfish_revenue
+         for n in round_counts]
+        for s in seeds
+    ])
+    mean = all_curves.mean(axis=0)
+    std = all_curves.std(axis=0)
     theo = theoretical_selfish_revenue(alpha, gamma)
 
-    ax.plot(round_counts, sim_vals, "b-o", markersize=4, label="Simulated revenue")
+    for i, curve in enumerate(all_curves):
+        label = "Individual seeds" if i == 0 else None
+        ax.plot(round_counts, curve, color="#3498db", alpha=0.18,
+                linewidth=1, label=label)
+
+    ax.plot(round_counts, mean, "b-o", markersize=4, linewidth=2,
+            label=f"Mean over {num_seeds} seeds")
+    ax.fill_between(round_counts, mean - std, mean + std,
+                    color="#3498db", alpha=0.25, label="±1σ band")
+
     ax.axhline(y=theo, color="r", linestyle="--", linewidth=2,
                label=f"Theoretical = {theo:.4f}")
     ax.axhline(y=alpha, color="gray", linestyle=":", linewidth=1.5,
@@ -232,7 +311,7 @@ def plot_convergence(
     ax.set_xlabel("Number of Simulation Rounds", fontsize=13)
     ax.set_ylabel("Selfish Miner Relative Revenue", fontsize=13)
     ax.set_title(f"Convergence Test (α={alpha}, γ={gamma})", fontsize=14)
-    ax.legend(fontsize=11)
+    ax.legend(fontsize=10, loc="upper right")
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
     _save_and_show(save_path)
